@@ -1,0 +1,58 @@
+security:
+    password_hashers:
+        App\Entity\User:
+            algorithm: auto
+
+    providers:
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
+
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+
+        api:
+            pattern: ^/api
+            lazy: true
+            provider: app_user_provider
+
+            json_login:
+                check_path: /api/login
+                username_path: email
+                password_path: password
+
+            logout:
+                path: /api/logout
+
+    access_control:
+        # 1) ZAWSZE pozwól na preflight
+        - { path: ^/api, roles: PUBLIC_ACCESS, methods: [OPTIONS] }
+
+        # 2) Pozwól niezalogowanym na login
+        - { path: ^/api/login$, roles: PUBLIC_ACCESS }
+
+        # 3) (opcjonalnie) logout też może być dostępny, ale zwykle i tak jest po sesji
+        - { path: ^/api/logout$, roles: PUBLIC_ACCESS, methods: [POST] }
+
+        # DOKUMENTY I REJESTR – tylko pracownicy firmy
+        - { path: ^/api/documents, roles: [ ROLE_EMPLOYEE, ROLE_MANAGER ] }
+        - { path: ^/api/ledger, roles: [ ROLE_EMPLOYEE, ROLE_MANAGER ] }
+
+        # 4) Księgowanie: tylko kierownik
+        - { path: ^/api/documents/\d+/book$, roles: [ ROLE_MANAGER ], methods: [ POST ] }
+
+        # Panel admina systemu
+        - { path: ^/api/admin, roles: ROLE_SYSTEM_ADMIN }
+
+        # Całe API tylko dla zalogowanych
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+
+
+#    access_control:
+#        # Panel admina systemu
+#        - { path: ^/api/admin, roles: ROLE_SYSTEM_ADMIN }
+#        # Całe API tylko dla zalogowanych
+#        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
