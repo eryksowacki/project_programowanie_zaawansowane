@@ -3,45 +3,41 @@
 namespace App\DataFixtures;
 
 use App\Entity\Category;
-use App\Entity\Company;
+use App\Repository\CategoryRepository;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
-use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 
-class CategoryFixtures extends Fixture implements DependentFixtureInterface
+class CategoryFixtures extends Fixture
 {
     public function load(ObjectManager $manager): void
     {
-        /** @var Company $company */
-        $company = $this->getReference(CompanyFixtures::COMPANY_DEMO, Company::class);
+        /** @var CategoryRepository $repo */
+        $repo = $manager->getRepository(Category::class);
 
-        $incomeNames = ['Sprzedaż towarów i usług', 'Pozostałe przychody'];
-        foreach ($incomeNames as $name) {
-            $cat = new Category();
-            $cat
-                ->setName($name)
-                ->setType('INCOME')
-                ->setCompany($company);
-            $manager->persist($cat);
-        }
+        $categories = [
+            ['name' => 'Sprzedaż towarów i usług', 'type' => 'INCOME'],
+            ['name' => 'Pozostałe przychody', 'type' => 'INCOME'],
 
-        $costNames = ['Koszty uboczne zakupu', 'Wynagrodzenia', 'Pozostałe wydatki'];
-        foreach ($costNames as $name) {
-            $cat = new Category();
+            ['name' => 'Koszt zakupu towarów i materiałów', 'type' => 'COST'],
+            ['name' => 'Koszty uboczne', 'type' => 'COST'],
+            ['name' => 'Wynagrodzenia', 'type' => 'COST'],
+            ['name' => 'Pozostałe koszty', 'type' => 'COST'],
+            ['name' => 'Koszty działalności badawczo-rozwojowej', 'type' => 'COST'],
+        ];
+
+        foreach ($categories as $row) {
+            $cat = $repo->findOneBy([
+                'name' => $row['name'],
+                'type' => $row['type'],
+            ]) ?? new Category();
+
             $cat
-                ->setName($name)
-                ->setType('COST')
-                ->setCompany($company);
+                ->setName($row['name'])
+                ->setType($row['type']);
+
             $manager->persist($cat);
         }
 
         $manager->flush();
-    }
-
-    public function getDependencies(): array
-    {
-        return [
-            CompanyFixtures::class,
-        ];
     }
 }

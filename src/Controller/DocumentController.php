@@ -29,7 +29,6 @@ class DocumentController extends AbstractController
 
         $company = $user->getCompany();
         if (!$company) {
-            // np. system admin bez przypisanej firmy
             return $this->json(['message' => 'User has no company assigned'], 400);
         }
 
@@ -54,18 +53,19 @@ class DocumentController extends AbstractController
 
         $data = array_map(function (Document $d) {
             return [
-                'id'           => $d->getId(),
-                'type'         => $d->getType(),
-                'issueDate'    => $d->getIssueDate()?->format('Y-m-d'),
-                'eventDate'    => $d->getEventDate()?->format('Y-m-d'),
-                'description'  => $d->getDescription(),
-                'netAmount'    => (float) $d->getNetAmount(),
-                'vatAmount'    => (float) $d->getVatAmount(),
-                'grossAmount'  => (float) $d->getGrossAmount(),
-                'status'       => $d->getStatus(),
-                'ledgerNumber' => $d->getLedgerNumber(),
-                'categoryId'   => $d->getCategory()?->getId(),
-                'contractorId' => $d->getContractor()?->getId(),
+                'id'            => $d->getId(),
+                'invoiceNumber' => $d->getInvoiceNumber(), // ✅ NEW
+                'type'          => $d->getType(),
+                'issueDate'     => $d->getIssueDate()?->format('Y-m-d'),
+                'eventDate'     => $d->getEventDate()?->format('Y-m-d'),
+                'description'   => $d->getDescription(),
+                'netAmount'     => (float) $d->getNetAmount(),
+                'vatAmount'     => (float) $d->getVatAmount(),
+                'grossAmount'   => (float) $d->getGrossAmount(),
+                'status'        => $d->getStatus(),
+                'ledgerNumber'  => $d->getLedgerNumber(),
+                'categoryId'    => $d->getCategory()?->getId(),
+                'contractorId'  => $d->getContractor()?->getId(),
             ];
         }, $docs);
 
@@ -92,6 +92,19 @@ class DocumentController extends AbstractController
 
         $payload = json_decode($request->getContent(), true) ?? [];
 
+        // ✅ NEW: invoiceNumber jako string (opcjonalne, ale jeśli przychodzi, waliduj)
+        $invoiceNumber = null;
+        if (array_key_exists('invoiceNumber', $payload)) {
+            if ($payload['invoiceNumber'] === null) {
+                $invoiceNumber = null;
+            } elseif (!is_string($payload['invoiceNumber'])) {
+                return $this->json(['message' => 'invoiceNumber must be a string'], 400);
+            } else {
+                $invoiceNumber = trim($payload['invoiceNumber']);
+                $invoiceNumber = $invoiceNumber === '' ? null : $invoiceNumber;
+            }
+        }
+
         // Minimalna walidacja
         foreach (['type', 'issueDate', 'eventDate', 'netAmount', 'vatAmount', 'grossAmount'] as $field) {
             if (!array_key_exists($field, $payload)) {
@@ -108,6 +121,7 @@ class DocumentController extends AbstractController
 
         $doc = new Document();
         $doc
+            ->setInvoiceNumber($invoiceNumber) // ✅ NEW
             ->setType((string) $payload['type']) // 'INCOME' albo 'COST'
             ->setIssueDate($issueDate)
             ->setEventDate($eventDate)
@@ -124,11 +138,11 @@ class DocumentController extends AbstractController
         // Kategoria tylko z tej samej firmy
         if (!empty($payload['categoryId'])) {
             $category = $categoryRepo->find((int) $payload['categoryId']);
-            if ($category && $category->getCompany()?->getId() === $company->getId()) {
+//            if ($category && $category->getCompany()?->getId() === $company->getId()) {
                 $doc->setCategory($category);
-            } else {
-                return $this->json(['message' => 'Invalid categoryId (not in your company)'], 400);
-            }
+//            } else {
+//                return $this->json(['message' => 'Invalid categoryId (not in your company)'], 400);
+//            }
         }
 
         // Kontrahent tylko z tej samej firmy
@@ -169,7 +183,6 @@ class DocumentController extends AbstractController
             return $this->json(['error' => 'Not found'], 404);
         }
 
-        // 🔒 Ochrona: dokument musi należeć do tej samej firmy
         if ($doc->getCompany()?->getId() !== $company->getId()) {
             return $this->json(['error' => 'Forbidden'], 403);
         }
@@ -178,7 +191,6 @@ class DocumentController extends AbstractController
             return $this->json(['error' => 'Already booked'], 400);
         }
 
-        // 🔢 Numer ewidencyjny liczony PER FIRMA
         $max = $repo->createQueryBuilder('d')
             ->select('MAX(d.ledgerNumber) as maxNr')
             ->andWhere('d.company = :company')
@@ -225,12 +237,13 @@ class DocumentController extends AbstractController
 
         $data = array_map(function (Document $d) {
             return [
-                'ledgerNumber' => $d->getLedgerNumber(),
-                'eventDate'    => $d->getEventDate()?->format('Y-m-d'),
-                'description'  => $d->getDescription(),
-                'type'         => $d->getType(),
-                'netAmount'    => (float) $d->getNetAmount(),
-                'grossAmount'  => (float) $d->getGrossAmount(),
+                'ledgerNumber'  => $d->getLedgerNumber(),
+                'eventDate'     => $d->getEventDate()?->format('Y-m-d'),
+                'description'   => $d->getDescription(),
+                'type'          => $d->getType(),
+                'netAmount'     => (float) $d->getNetAmount(),
+                'grossAmount'   => (float) $d->getGrossAmount(),
+                // (opcjonalnie możesz też dodać invoiceNumber do ledger jeśli chcesz)
             ];
         }, $docs);
 
@@ -239,12 +252,10 @@ class DocumentController extends AbstractController
 
     private function denyUnlessEmployeeOrManager(): void
     {
-        // System admin i company admin NIE mają widzieć dokumentów
-        if ($this->isGranted('ROLE_SYSTEM_ADMIN') || $this->isGranted('ROLE_COMPANY_ADMIN')) {
+        if ($this->isGranted('ROLE_SYSTEM_ADMIN')) {
             throw $this->createAccessDeniedException('Admins are not allowed to access documents');
         }
 
-        // Dostęp do dokumentów mają tylko EMPLOYEE i MANAGER
         if (!$this->isGranted('ROLE_EMPLOYEE') && !$this->isGranted('ROLE_MANAGER')) {
             throw $this->createAccessDeniedException('Only employees/managers can access documents');
         }

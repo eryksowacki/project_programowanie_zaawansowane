@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use App\Entity\Role;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
@@ -15,7 +16,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     public const ROLE_SYSTEM_ADMIN  = 'SYSTEM_ADMIN';
-    public const ROLE_COMPANY_ADMIN = 'COMPANY_ADMIN';
+//    public const ROLE_COMPANY_ADMIN = 'COMPANY_ADMIN';
     public const ROLE_MANAGER       = 'MANAGER';
     public const ROLE_EMPLOYEE      = 'EMPLOYEE';
 
@@ -39,8 +40,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $lastName = null;
 
-    #[ORM\Column(length: 20)]
-    private ?string $role = null;
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Role $role = null;
 
     #[ORM\ManyToOne(inversedBy: 'users')]
     private ?Company $company = null;
@@ -82,26 +84,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         return (string) $this->email;
     }
-
-//    /**
-//     * @see UserInterface
-//     */
-//    public function getRoles(): array
-//    {
-//        $roles = $this->roles;
-//        // guarantee every user at least has ROLE_USER
-//        $roles[] = 'ROLE_USER';
-//
-//        return array_unique($roles);
-//    }
-
-//    public function setRole(string $role): static
-//    {
-//        $this->role = $role;
-//        $this->roles = ['ROLE_' . $role];
-//
-//        return $this;
-//    }
 
     /**
      * @see PasswordAuthenticatedUserInterface
@@ -161,34 +143,26 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getRoles(): array
     {
-        $r = (string) ($this->role ?? '');
-        if ($r === '') return [];
+        $roles = [];
 
-        // jeśli w bazie masz już "ROLE_MANAGER" to nie doklejaj drugi raz
-        if (str_starts_with($r, 'ROLE_')) {
-            return [$r];
+        if ($this->role) {
+            $roles[] = $this->role->getCode(); // np. ROLE_EMPLOYEE
         }
 
-        return ['ROLE_' . $r];
+        // dobre praktyki: każdy ma bazową rolę
+        $roles[] = 'ROLE_USER';
+
+        return array_values(array_unique($roles));
     }
 
-    public function getRole(): ?string
+    public function getRole(): ?Role
     {
-        $r = $this->role;
-        if ($r === null) return null;
-
-        return str_starts_with($r, 'ROLE_') ? $r : 'ROLE_' . $r;
+        return $this->role;
     }
 
-    public function setRole(string $role): static
+    public function setRole(Role $role): self
     {
-        // pozwól ustawiać i "MANAGER", i "ROLE_MANAGER"
-        if (str_starts_with($role, 'ROLE_')) {
-            $role = substr($role, 5);
-        }
-
-        $this->role = $role;
-        return $this;
+        $this->role = $role; return $this;
     }
 
     public function getCompany(): ?Company

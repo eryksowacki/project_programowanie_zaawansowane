@@ -21,10 +21,6 @@ class Category
     #[ORM\Column(length: 10)]
     private ?string $type = null;
 
-    #[ORM\ManyToOne(inversedBy: 'categories')]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?Company $company = null;
-
     /**
      * @var Collection<int, Document>
      */
@@ -49,7 +45,6 @@ class Category
     public function setName(string $name): static
     {
         $this->name = $name;
-
         return $this;
     }
 
@@ -61,19 +56,6 @@ class Category
     public function setType(string $type): static
     {
         $this->type = $type;
-
-        return $this;
-    }
-
-    public function getCompany(): ?Company
-    {
-        return $this->company;
-    }
-
-    public function setCompany(?Company $company): static
-    {
-        $this->company = $company;
-
         return $this;
     }
 
@@ -98,7 +80,6 @@ class Category
     public function removeDocument(Document $document): static
     {
         if ($this->documents->removeElement($document)) {
-            // set the owning side to null (unless already changed)
             if ($document->getCategory() === $this) {
                 $document->setCategory(null);
             }

@@ -3,6 +3,7 @@
 namespace App\Controller\Admin;
 
 use App\Entity\Company;
+use App\Entity\Role;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -22,11 +23,13 @@ class UserAdminController extends AbstractController
     #[Route('', name: 'admin_users_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
+        $this->denyAccessUnlessGranted('ROLE_SYSTEM_ADMIN');
+
         $payload = json_decode($request->getContent(), true) ?? [];
 
         $email = trim((string)($payload['email'] ?? ''));
         $password = (string)($payload['password'] ?? '');
-        $role = (string)($payload['role'] ?? 'EMPLOYEE');
+        $roleCodeInput = (string)($payload['role'] ?? 'ROLE_EMPLOYEE');
 
         if ($email === '' || $password === '') {
             return $this->json(['message' => 'Email and password are required'], 400);
@@ -46,10 +49,14 @@ class UserAdminController extends AbstractController
             }
         }
 
+        $role = $this->resolveRoleEntity($roleCodeInput);
+        if (!$role) {
+            return $this->json(['message' => 'Invalid role'], 400);
+        }
+
         $user = new User();
         $user->setEmail($email);
 
-        // jeśli masz firstName/lastName w encji – ustawiamy je, jeśli nie masz: usuń te linie
         if (method_exists($user, 'setFirstName')) {
             $user->setFirstName($payload['firstName'] ?? null);
         }
@@ -57,11 +64,7 @@ class UserAdminController extends AbstractController
             $user->setLastName($payload['lastName'] ?? null);
         }
 
-        // jeśli masz setRole w encji – zostaw, jeśli nie masz, dopasuj do swojej implementacji
-        if (method_exists($user, 'setRole')) {
-            $user->setRole($role);
-        }
-
+        $user->setRole($role);
         if (method_exists($user, 'setCompany')) {
             $user->setCompany($company);
         }
@@ -74,7 +77,8 @@ class UserAdminController extends AbstractController
         return $this->json([
             'id'        => $user->getId(),
             'email'     => $user->getEmail(),
-            'role'      => method_exists($user, 'getRole') ? $user->getRole() : null,
+            'role'      => $user->getRole()?->getCode(),
+            'roles'     => $user->getRoles(),
             'companyId' => $user->getCompany()?->getId(),
         ], 201);
     }
@@ -82,6 +86,8 @@ class UserAdminController extends AbstractController
     #[Route('/{id}/full', name: 'admin_users_update_full', methods: ['PUT'])]
     public function update(int $id, Request $request): JsonResponse
     {
+        $this->denyAccessUnlessGranted('ROLE_SYSTEM_ADMIN');
+
         $user = $this->em->getRepository(User::class)->find($id);
         if (!$user) {
             return $this->json(['message' => 'User not found'], 404);
@@ -101,8 +107,12 @@ class UserAdminController extends AbstractController
             $user->setLastName($payload['lastName']);
         }
 
-        if (array_key_exists('role', $payload) && method_exists($user, 'setRole')) {
-            $user->setRole((string)$payload['role']);
+        if (array_key_exists('role', $payload)) {
+            $role = $this->resolveRoleEntity((string)$payload['role']);
+            if (!$role) {
+                return $this->json(['message' => 'Invalid role'], 400);
+            }
+            $user->setRole($role);
         }
 
         if (array_key_exists('companyId', $payload) && method_exists($user, 'setCompany')) {
@@ -125,12 +135,18 @@ class UserAdminController extends AbstractController
 
         $this->em->flush();
 
-        return $this->json(['id' => $user->getId()]);
+        return $this->json([
+            'id'    => $user->getId(),
+            'role'  => $user->getRole()?->getCode(),
+            'roles' => $user->getRoles(),
+        ]);
     }
 
     #[Route('/{id}', name: 'admin_users_patch', methods: ['PATCH'])]
     public function patch(int $id, Request $request): JsonResponse
     {
+        $this->denyAccessUnlessGranted('ROLE_SYSTEM_ADMIN');
+
         /** @var User|null $user */
         $user = $this->em->getRepository(User::class)->find($id);
         if (!$user) {
@@ -139,9 +155,14 @@ class UserAdminController extends AbstractController
 
         $payload = json_decode($request->getContent(), true) ?? [];
 
-        if (array_key_exists('role', $payload) && method_exists($user, 'setRole')) {
-            $user->setRole((string)$payload['role']);
+        if (array_key_exists('role', $payload)) {
+            $role = $this->resolveRoleEntity((string)$payload['role']);
+            if (!$role) {
+                return $this->json(['message' => 'Invalid role'], 400);
+            }
+            $user->setRole($role);
         }
+
         if (array_key_exists('firstName', $payload) && method_exists($user, 'setFirstName')) {
             $user->setFirstName($payload['firstName']);
         }
@@ -151,12 +172,18 @@ class UserAdminController extends AbstractController
 
         $this->em->flush();
 
-        return $this->json(['id' => $user->getId()]);
+        return $this->json([
+            'id'    => $user->getId(),
+            'role'  => $user->getRole()?->getCode(),
+            'roles' => $user->getRoles(),
+        ]);
     }
 
     #[Route('/{id}', name: 'admin_users_delete', methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {
+        $this->denyAccessUnlessGranted('ROLE_SYSTEM_ADMIN');
+
         $user = $this->em->getRepository(User::class)->find($id);
         if (!$user) {
             return $this->json(['message' => 'User not found'], 404);
@@ -166,5 +193,27 @@ class UserAdminController extends AbstractController
         $this->em->flush();
 
         return $this->json(null, 204);
+    }
+
+    private function resolveRoleEntity(string $input): ?Role
+    {
+        $code = strtoupper(trim($input));
+
+        // pozwalam na "EMPLOYEE" zamiast "ROLE_EMPLOYEE" itd.
+        $map = [
+            'SYSTEM_ADMIN' => 'ROLE_SYSTEM_ADMIN',
+            'ROLE_SYSTEM_ADMIN' => 'ROLE_SYSTEM_ADMIN',
+            'ADMIN' => 'ROLE_SYSTEM_ADMIN',
+
+            'MANAGER' => 'ROLE_MANAGER',
+            'ROLE_MANAGER' => 'ROLE_MANAGER',
+
+            'EMPLOYEE' => 'ROLE_EMPLOYEE',
+            'ROLE_EMPLOYEE' => 'ROLE_EMPLOYEE',
+        ];
+
+        $code = $map[$code] ?? $code;
+
+        return $this->em->getRepository(Role::class)->findOneBy(['code' => $code]);
     }
 }

@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
+use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 
 class ContractorController extends AbstractController
 {
@@ -48,7 +49,7 @@ class ContractorController extends AbstractController
         Request $request,
         EntityManagerInterface $em
     ): JsonResponse {
-        $this->denyAccessUnlessGranted('ROLE_MANAGER');
+        $this->denyUnlessEmployeeOrManager();
 
         $company = $user?->getCompany();
         if (!$company) {
@@ -137,26 +138,35 @@ class ContractorController extends AbstractController
         ContractorRepository $repo,
         EntityManagerInterface $em
     ): JsonResponse {
-        $this->denyAccessUnlessGranted('ROLE_MANAGER');
+        $this->denyUnlessEmployeeOrManager();
 
-        $company = $user?->getCompany();
-        if (!$company) {
-            return $this->json(['message' => 'User has no company'], 400);
-        }
+        if (!$user) return $this->json(['message' => 'Unauthorized'], 401);
+
+        $company = $user->getCompany();
+        if (!$company) return $this->json(['message' => 'User has no company'], 400);
 
         $con = $repo->find($id);
-        if (!$con) {
-            return $this->json(['message' => 'Not found'], 404);
-        }
+        if (!$con) return $this->json(['message' => 'Not found'], 404);
 
         if ($con->getCompany()?->getId() !== $company->getId()) {
             return $this->json(['message' => 'Forbidden'], 403);
         }
 
-        $em->remove($con);
-        $em->flush();
-
-        return $this->json(null, 204);
+        try {
+            $em->remove($con);
+            $em->flush();
+            return $this->json(null, 204);
+        } catch (ForeignKeyConstraintViolationException $e) {
+            return $this->json([
+                'message' => 'The contractor cannot be deleted because it is used in documents.',
+                'code' => 'CONTRACTOR_IN_USE',
+            ], 409);
+        } catch (\Throwable $e) {
+            return $this->json([
+                'message' => 'Failed to delete contractor (server error).',
+                'code' => 'DELETE_FAILED',
+            ], 500);
+        }
     }
 
     private function denyUnlessEmployeeOrManager(): void

@@ -47,6 +47,9 @@ class Document
     #[ORM\Column]
     private ?\DateTimeImmutable $updatedAt = null;
 
+    #[ORM\Column(name: 'invoice_number', type: 'string', length: 128)]
+    private string $invoiceNumber;
+
     #[ORM\ManyToOne(inversedBy: 'documents')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Company $company = null;
@@ -249,6 +252,17 @@ class Document
     {
         $this->createdBy = $createdBy;
 
+        return $this;
+    }
+
+    public function getInvoiceNumber(): string
+    {
+        return $this->invoiceNumber;
+    }
+
+    public function setInvoiceNumber(string $invoiceNumber): self
+    {
+        $this->invoiceNumber = $invoiceNumber;
         return $this;
     }
 }

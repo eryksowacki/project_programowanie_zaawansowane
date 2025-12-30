@@ -28,6 +28,9 @@ class Company
     #[ORM\Column]
     private ?bool $active = null;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $vatActive = false;
+
     /**
      * @var Collection<int, User>
      */
@@ -111,6 +114,17 @@ class Company
     {
         $this->active = $active;
 
+        return $this;
+    }
+
+    public function isVatActive(): bool
+    {
+        return $this->vatActive;
+    }
+
+    public function setVatActive(bool $vatActive): self
+    {
+        $this->vatActive = $vatActive;
         return $this;
     }
 
