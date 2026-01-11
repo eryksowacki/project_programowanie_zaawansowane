@@ -16,7 +16,6 @@ use App\Entity\Role;
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     public const ROLE_SYSTEM_ADMIN  = 'SYSTEM_ADMIN';
-//    public const ROLE_COMPANY_ADMIN = 'COMPANY_ADMIN';
     public const ROLE_MANAGER       = 'MANAGER';
     public const ROLE_EMPLOYEE      = 'EMPLOYEE';
 

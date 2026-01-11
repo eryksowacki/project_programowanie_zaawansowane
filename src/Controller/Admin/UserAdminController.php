@@ -16,10 +16,13 @@ use Symfony\Component\Routing\Annotation\Route;
 class UserAdminController extends AbstractController
 {
     public function __construct(
-        private EntityManagerInterface $em,
-        private UserPasswordHasherInterface $hasher,
+        private readonly EntityManagerInterface $em,
+        private readonly UserPasswordHasherInterface $hasher,
     ) {}
 
+    /**
+     * POST /api/admin/users
+     */
     #[Route('', name: 'admin_users_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
@@ -29,10 +32,15 @@ class UserAdminController extends AbstractController
 
         $email = trim((string)($payload['email'] ?? ''));
         $password = (string)($payload['password'] ?? '');
-        $roleCodeInput = (string)($payload['role'] ?? 'ROLE_EMPLOYEE');
+        $roleInput = (string)($payload['role'] ?? 'ROLE_EMPLOYEE');
 
         if ($email === '' || $password === '') {
             return $this->json(['message' => 'Email and password are required'], 400);
+        }
+
+        $pwdError = $this->validatePassword($password);
+        if ($pwdError) {
+            return $this->json(['message' => $pwdError], 422);
         }
 
         $existing = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
@@ -49,7 +57,7 @@ class UserAdminController extends AbstractController
             }
         }
 
-        $role = $this->resolveRoleEntity($roleCodeInput);
+        $role = $this->resolveRoleEntity($roleInput);
         if (!$role) {
             return $this->json(['message' => 'Invalid role'], 400);
         }
@@ -57,6 +65,7 @@ class UserAdminController extends AbstractController
         $user = new User();
         $user->setEmail($email);
 
+        // Pola opcjonalne: ustawiamy tylko jeśli encja ma settery (tak jak miałeś)
         if (method_exists($user, 'setFirstName')) {
             $user->setFirstName($payload['firstName'] ?? null);
         }
@@ -65,6 +74,7 @@ class UserAdminController extends AbstractController
         }
 
         $user->setRole($role);
+
         if (method_exists($user, 'setCompany')) {
             $user->setCompany($company);
         }
@@ -74,20 +84,27 @@ class UserAdminController extends AbstractController
         $this->em->persist($user);
         $this->em->flush();
 
+        // roles: w laravel miałeś authRoles(); w symfony zwykle jest getRoles()
+        $roles = method_exists($user, 'authRoles') ? $user->authRoles() : $user->getRoles();
+
         return $this->json([
             'id'        => $user->getId(),
             'email'     => $user->getEmail(),
             'role'      => $user->getRole()?->getCode(),
-            'roles'     => $user->getRoles(),
-            'companyId' => $user->getCompany()?->getId(),
+            'roles'     => $roles,
+            'companyId' => method_exists($user, 'getCompany') ? $user->getCompany()?->getId() : null,
         ], 201);
     }
 
+    /**
+     * PUT /api/admin/users/{id}/full
+     */
     #[Route('/{id}/full', name: 'admin_users_update_full', methods: ['PUT'])]
-    public function update(int $id, Request $request): JsonResponse
+    public function updateFull(int $id, Request $request): JsonResponse
     {
         $this->denyAccessUnlessGranted('ROLE_SYSTEM_ADMIN');
 
+        /** @var User|null $user */
         $user = $this->em->getRepository(User::class)->find($id);
         if (!$user) {
             return $this->json(['message' => 'User not found'], 404);
@@ -129,19 +146,32 @@ class UserAdminController extends AbstractController
             $user->setCompany($company);
         }
 
+        // Laravel: waliduje i dopiero wtedy hashuje
         if (array_key_exists('password', $payload) && $payload['password']) {
-            $user->setPassword($this->hasher->hashPassword($user, (string)$payload['password']));
+            $newPwd = (string)$payload['password'];
+
+            $pwdError = $this->validatePassword($newPwd);
+            if ($pwdError) {
+                return $this->json(['message' => $pwdError], 422);
+            }
+
+            $user->setPassword($this->hasher->hashPassword($user, $newPwd));
         }
 
         $this->em->flush();
 
+        $roles = method_exists($user, 'authRoles') ? $user->authRoles() : $user->getRoles();
+
         return $this->json([
             'id'    => $user->getId(),
             'role'  => $user->getRole()?->getCode(),
-            'roles' => $user->getRoles(),
+            'roles' => $roles,
         ]);
     }
 
+    /**
+     * PATCH /api/admin/users/{id}
+     */
     #[Route('/{id}', name: 'admin_users_patch', methods: ['PATCH'])]
     public function patch(int $id, Request $request): JsonResponse
     {
@@ -172,18 +202,24 @@ class UserAdminController extends AbstractController
 
         $this->em->flush();
 
+        $roles = method_exists($user, 'authRoles') ? $user->authRoles() : $user->getRoles();
+
         return $this->json([
             'id'    => $user->getId(),
             'role'  => $user->getRole()?->getCode(),
-            'roles' => $user->getRoles(),
+            'roles' => $roles,
         ]);
     }
 
+    /**
+     * DELETE /api/admin/users/{id}
+     */
     #[Route('/{id}', name: 'admin_users_delete', methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {
         $this->denyAccessUnlessGranted('ROLE_SYSTEM_ADMIN');
 
+        /** @var User|null $user */
         $user = $this->em->getRepository(User::class)->find($id);
         if (!$user) {
             return $this->json(['message' => 'User not found'], 404);
@@ -199,21 +235,50 @@ class UserAdminController extends AbstractController
     {
         $code = strtoupper(trim($input));
 
-        // pozwalam na "EMPLOYEE" zamiast "ROLE_EMPLOYEE" itd.
         $map = [
-            'SYSTEM_ADMIN' => 'ROLE_SYSTEM_ADMIN',
+            'SYSTEM_ADMIN'      => 'ROLE_SYSTEM_ADMIN',
             'ROLE_SYSTEM_ADMIN' => 'ROLE_SYSTEM_ADMIN',
-            'ADMIN' => 'ROLE_SYSTEM_ADMIN',
+            'ADMIN'             => 'ROLE_SYSTEM_ADMIN',
 
-            'MANAGER' => 'ROLE_MANAGER',
+            'MANAGER'      => 'ROLE_MANAGER',
             'ROLE_MANAGER' => 'ROLE_MANAGER',
 
-            'EMPLOYEE' => 'ROLE_EMPLOYEE',
+            'EMPLOYEE'      => 'ROLE_EMPLOYEE',
             'ROLE_EMPLOYEE' => 'ROLE_EMPLOYEE',
         ];
 
         $code = $map[$code] ?? $code;
 
         return $this->em->getRepository(Role::class)->findOneBy(['code' => $code]);
+    }
+
+    /**
+     * Wymagania:
+     * - min 8 znaków
+     * - min 1 mała
+     * - min 1 wielka
+     * - min 1 cyfra
+     * - min 1 znak specjalny
+     */
+    private function validatePassword(string $password): ?string
+    {
+        if (mb_strlen($password) < 8) {
+            return 'Password must be at least 8 characters long.';
+        }
+        if (!preg_match('/[a-z]/', $password)) {
+            return 'Password must contain at least one lowercase letter.';
+        }
+        if (!preg_match('/[A-Z]/', $password)) {
+            return 'Password must contain at least one uppercase letter.';
+        }
+        if (!preg_match('/\d/', $password)) {
+            return 'Password must contain at least one digit.';
+        }
+        // "special" = wszystko co nie jest literą ani cyfrą (działa też na polskie znaki)
+        if (!preg_match('/[^\p{L}\p{N}]/u', $password)) {
+            return 'Password must contain at least one special character.';
+        }
+
+        return null;
     }
 }
