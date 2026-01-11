@@ -38,22 +38,24 @@ security:
         - { path: ^/api/logout$, roles: PUBLIC_ACCESS, methods: [POST] }
 
         # DOKUMENTY I KSIĘGA – tylko pracownicy firmy
-        - { path: ^/api/documents, roles: [ ROLE_EMPLOYEE, ROLE_MANAGER ] }
-        - { path: ^/api/ledger, roles: [ ROLE_EMPLOYEE, ROLE_MANAGER ] }
+        - { path: ^/api/documents, roles: [ROLE_EMPLOYEE, ROLE_MANAGER] }
+        - { path: ^/api/ledger, roles: [ROLE_EMPLOYEE, ROLE_MANAGER] }
 
         # 4) Księgowanie: tylko kierownik
-        - { path: ^/api/documents/\d+/book$, roles: [ ROLE_MANAGER ], methods: [ POST ] }
+        - {
+              path: ^/api/documents/\d+/book$,
+              roles: [ROLE_MANAGER],
+              methods: [POST],
+          }
 
         # RAPORTY – tylko pracownicy firmy (jak dokumenty/księga)
-        - { path: ^/api/reports, roles: [ ROLE_MANAGER ] }
+        - { path: ^/api/reports, roles: [ROLE_MANAGER] }
 
         # Panel admina systemu
         - { path: ^/api/admin, roles: ROLE_SYSTEM_ADMIN }
 
         # Całe API tylko dla zalogowanych
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
-
-
 #    access_control:
 #        # Panel admina systemu
 #        - { path: ^/api/admin, roles: SYSTEM_ADMIN }
