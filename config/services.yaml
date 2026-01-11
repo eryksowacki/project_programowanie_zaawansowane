@@ -13,12 +13,6 @@ services:
             - "../src/Entity/"
             - "../src/Kernel.php"
 
-    App\EventSubscriber\CorsSubscriber:
-        arguments:
-            $allowedOrigins: "%cors_allowed_origins%"
-        tags:
-            - { name: kernel.event_subscriber }
-
     # ✅ Report factory (alias interfejsu do implementacji)
     App\Report\Contracts\ReportFactoryInterface:
         alias: App\Report\Factory\DompdfReportFactory
