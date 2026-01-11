@@ -114,7 +114,6 @@ class Contractor
     public function removeDocument(Document $document): static
     {
         if ($this->documents->removeElement($document)) {
-            // set the owning side to null (unless already changed)
             if ($document->getContractor() === $this) {
                 $document->setContractor(null);
             }

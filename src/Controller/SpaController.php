@@ -1,5 +1,4 @@
 <?php 
-// src/Controller/SpaController.php
 namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -20,7 +19,6 @@ class SpaController extends AbstractController
         );
     }
 
-    // fallback dla react-router (opcjonalnie)
     #[Route('/{reactRouting}', name: 'spa_fallback', requirements: ['reactRouting' => '^(?!api).+'], methods: ['GET'])]
     public function fallback(): Response
     {

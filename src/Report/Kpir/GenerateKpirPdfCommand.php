@@ -24,7 +24,7 @@ final class GenerateKpirPdfCommand implements ReportCommandInterface
             throw new \InvalidArgumentException('User has no company assigned');
         }
 
-        $mode = (string)($payload['mode'] ?? 'month'); // month|quarter|year
+        $mode = (string)($payload['mode'] ?? 'month');
         $year = (int)($payload['year'] ?? (int)date('Y'));
 
         [$from, $toExclusive, $periodTitle] = $this->periodResolver->resolve($mode, $payload, $year);

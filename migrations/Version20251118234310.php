@@ -16,7 +16,6 @@ final class Version20251118234310 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        // company
         $this->addSql("
             CREATE TABLE company (
                 id INT AUTO_INCREMENT NOT NULL,
@@ -28,7 +27,6 @@ final class Version20251118234310 extends AbstractMigration
             ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB
         ");
 
-        // category
         $this->addSql("
             CREATE TABLE category (
                 id INT AUTO_INCREMENT NOT NULL,
@@ -40,7 +38,6 @@ final class Version20251118234310 extends AbstractMigration
             ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB
         ");
 
-        // contractor
         $this->addSql("
             CREATE TABLE contractor (
                 id INT AUTO_INCREMENT NOT NULL,
@@ -53,7 +50,6 @@ final class Version20251118234310 extends AbstractMigration
             ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB
         ");
 
-        // users (instead of "user")
         $this->addSql("
             CREATE TABLE users (
                 id INT AUTO_INCREMENT NOT NULL,
@@ -69,7 +65,6 @@ final class Version20251118234310 extends AbstractMigration
             ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB
         ");
 
-        // document
         $this->addSql("
             CREATE TABLE document (
                 id INT AUTO_INCREMENT NOT NULL,
@@ -96,7 +91,6 @@ final class Version20251118234310 extends AbstractMigration
             ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB
         ");
 
-        // FKs (MySQL syntax, no deferrable)
         $this->addSql("ALTER TABLE category
             ADD CONSTRAINT FK_64C19C1979B1AD6 FOREIGN KEY (company_id) REFERENCES company (id)
         ");
@@ -128,7 +122,6 @@ final class Version20251118234310 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
-        // drop FKs first (MySQL requires that)
         $this->addSql('ALTER TABLE document DROP FOREIGN KEY FK_D8698A76B03A8386');
         $this->addSql('ALTER TABLE document DROP FOREIGN KEY FK_D8698A76B0265DC7');
         $this->addSql('ALTER TABLE document DROP FOREIGN KEY FK_D8698A7612469DE2');

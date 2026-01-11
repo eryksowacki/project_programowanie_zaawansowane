@@ -60,9 +60,6 @@ class SecurityController extends AbstractController
         return $this->json($this->serializeUser($user));
     }
 
-    /**
-     * Odpowiednik AuthController@updateMe z Laravel (bez validatora)
-     */
     #[Route('/api/me', name: 'api_me_update', methods: ['PUT', 'PATCH'])]
     public function updateMe(#[CurrentUser] ?User $user, Request $request): JsonResponse
     {
@@ -83,24 +80,20 @@ class SecurityController extends AbstractController
             return $this->json(['message' => 'Invalid email'], 422);
         }
 
-        // opcjonalnie: ogranicz długości jak w Laravel
         if (mb_strlen($email) > 255) {
             return $this->json(['message' => 'Email is too long (max 255)'], 422);
         }
 
-        // Unikalność emaila (jak Rule::unique()->ignore($user->id))
         $existing = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         if ($existing && $existing->getId() !== $user->getId()) {
             return $this->json(['message' => 'User with this email already exists'], 409);
         }
 
-        // Rola
         $role = $this->resolveRoleEntity($roleInput);
         if (!$role) {
             return $this->json(['message' => 'Invalid role'], 400);
         }
 
-        // firstName / lastName (opcjonalne)
         if (array_key_exists('firstName', $payload)) {
             $firstName = $payload['firstName'];
             if ($firstName !== null && !is_string($firstName)) {
@@ -133,7 +126,6 @@ class SecurityController extends AbstractController
             $user->setRole($role);
         }
 
-        // Hasło (opcjonalne) – Laravel miał min:6
         if (array_key_exists('password', $payload) && $payload['password']) {
             $pwd = $payload['password'];
 

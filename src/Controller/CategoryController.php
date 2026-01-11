@@ -25,7 +25,7 @@ class CategoryController extends AbstractController
             return $this->json(['message' => 'Unauthorized'], 401);
         }
 
-        $type = $request->query->get('type'); // INCOME / COST (opcjonalnie)
+        $type = $request->query->get('type'); // INCOME / COST
 
         $qb = $repo->createQueryBuilder('c')
             ->orderBy('c.name', 'ASC');
@@ -78,8 +78,6 @@ class CategoryController extends AbstractController
         $c->setName($name);
         $c->setType($type);
 
-        // ✅ Kategorie są globalne: NIE przypisujemy do firmy
-
         $em->persist($c);
         $em->flush();
 
@@ -103,8 +101,6 @@ class CategoryController extends AbstractController
         if (!$cat) {
             return $this->json(['message' => 'Not found'], 404);
         }
-
-        // ✅ Kategorie są globalne: NIE sprawdzamy firmy
 
         $payload = json_decode($request->getContent(), true) ?? [];
 
@@ -146,8 +142,6 @@ class CategoryController extends AbstractController
             return $this->json(['message' => 'Not found'], 404);
         }
 
-        // ✅ Kategorie są globalne: NIE sprawdzamy firmy
-        // ✅ Ale usuwanie blokujemy, jeśli kategoria jest używana w dokumentach (FK)
         $usedInDocs = (int) $em->createQueryBuilder()
             ->select('COUNT(d.id)')
             ->from(Document::class, 'd')
@@ -172,7 +166,6 @@ class CategoryController extends AbstractController
 
     private function denyUnlessAdmin(): void
     {
-        // “administrator” = COMPANY_ADMIN lub SYSTEM_ADMIN (dopasuj jeśli u Ciebie jest inaczej)
         if (!$this->isGranted('ROLE_SYSTEM_ADMIN')) {
             throw $this->createAccessDeniedException('Only administrators can modify categories');
         }

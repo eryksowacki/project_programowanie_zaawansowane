@@ -13,11 +13,9 @@ class Role
 #[ORM\Column]
 private ?int $id = null;
 
-// np. ROLE_EMPLOYEE, ROLE_MANAGER
 #[ORM\Column(length: 50, unique: true)]
 private string $code;
 
-// opcjonalnie: ładna nazwa do UI
 #[ORM\Column(length: 100)]
 private string $name;
 

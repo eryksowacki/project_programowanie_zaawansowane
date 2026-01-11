@@ -19,7 +19,7 @@ class AppFixtures extends Fixture implements DependentFixtureInterface
     {
         $admin = new User();
         $admin->setEmail('admin@system.local');
-        $admin->setRole($this->getReference(RoleFixtures::REF_ADMIN, Role::class)); // "SYSTEM_ADMIN"
+        $admin->setRole($this->getReference(RoleFixtures::REF_ADMIN, Role::class));
 
         $hashed = $this->passwordHasher->hashPassword($admin, 'admin123');
         $admin->setPassword($hashed);

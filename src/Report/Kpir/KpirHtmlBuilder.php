@@ -50,7 +50,6 @@ final class KpirHtmlBuilder implements KpirHtmlBuilderInterface
         $rowsHtml = '';
         $lp = 0;
 
-        // sumy tylko dla kolumn kwotowych 7..14 i 16
         $sum = [
             7 => 0.0, 8 => 0.0, 9 => 0.0,
             10 => 0.0, 11 => 0.0,
@@ -67,7 +66,6 @@ final class KpirHtmlBuilder implements KpirHtmlBuilderInterface
             $contractorAddr = $d->getContractor()?->getAddress() ?? '';
             $desc = $d->getDescription() ?? '';
 
-            // UWAGA: jak w Twoim ledger (gross). Jeśli chcesz netto -> getNetAmount()
             $amount = (float)$d->getGrossAmount();
 
             $c7 = 0.0; $c8 = 0.0; $c9 = 0.0;
@@ -79,10 +77,10 @@ final class KpirHtmlBuilder implements KpirHtmlBuilderInterface
 
             if ($d->getType() === 'INCOME') {
                 $c7 = $amount;
-                $c9 = $amount; // 7+8
+                $c9 = $amount;
             } elseif ($d->getType() === 'COST') {
                 $c13 = $amount;
-                $c14 = $amount; // 12+13
+                $c14 = $amount;
             }
 
             $sum[7] += $c7;  $sum[8] += $c8;  $sum[9] += $c9;

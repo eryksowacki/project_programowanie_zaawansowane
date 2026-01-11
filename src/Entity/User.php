@@ -145,10 +145,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $roles = [];
 
         if ($this->role) {
-            $roles[] = $this->role->getCode(); // np. ROLE_EMPLOYEE
+            $roles[] = $this->role->getCode();
         }
 
-        // dobre praktyki: każdy ma bazową rolę
         $roles[] = 'ROLE_USER';
 
         return array_values(array_unique($roles));
@@ -197,7 +196,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function removeDocument(Document $document): static
     {
         if ($this->documents->removeElement($document)) {
-            // set the owning side to null (unless already changed)
             if ($document->getCreatedBy() === $this) {
                 $document->setCreatedBy(null);
             }

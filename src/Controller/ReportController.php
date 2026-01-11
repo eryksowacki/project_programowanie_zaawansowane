@@ -27,7 +27,7 @@ class ReportController extends AbstractController
 
         try {
             /** @var array<string,mixed> $payload */
-            $payload = $request->toArray(); // waliduje JSON i rzuca wyjątek przy błędzie
+            $payload = $request->toArray();
         } catch (\Throwable) {
             return $this->json(['message' => 'Invalid JSON body'], 400);
         }
@@ -35,14 +35,12 @@ class ReportController extends AbstractController
         try {
             $file = $command->run($user, $payload);
 
-            // Jeśli obiekt pliku ma helper ->toResponse() (zalecane) to użyj go
             if (is_object($file) && method_exists($file, 'toResponse')) {
                 /** @var Response $response */
                 $response = $file->toResponse();
                 return $response;
             }
 
-            // Fallback: obsługa jak w Twojej pierwotnej wersji (content/contentType/filename)
             return new Response(
                 $file->content ?? '',
                 200,
@@ -85,7 +83,6 @@ class ReportController extends AbstractController
                 return $response;
             }
 
-            // Fallback gdyby XLSX też zwracał content/contentType/filename
             return new Response(
                 $file->content ?? '',
                 200,

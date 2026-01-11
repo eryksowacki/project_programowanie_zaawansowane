@@ -73,7 +73,6 @@ final class GenerateContractorsXlsxCommand implements ReportCommandInterface
             ->getQuery()
             ->getResult();
 
-        // agregacja: contractor + type
         $agg = [];
         /** @var Document $d */
         foreach ($docs as $d) {

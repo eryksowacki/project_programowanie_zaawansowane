@@ -178,7 +178,6 @@ class Company
     public function removeCategory(Category $category): static
     {
         if ($this->categories->removeElement($category)) {
-            // set the owning side to null (unless already changed)
             if ($category->getCompany() === $this) {
                 $category->setCompany(null);
             }
@@ -208,7 +207,6 @@ class Company
     public function removeContractor(Contractor $contractor): static
     {
         if ($this->contractors->removeElement($contractor)) {
-            // set the owning side to null (unless already changed)
             if ($contractor->getCompany() === $this) {
                 $contractor->setCompany(null);
             }
@@ -238,7 +236,6 @@ class Company
     public function removeDocument(Document $document): static
     {
         if ($this->documents->removeElement($document)) {
-            // set the owning side to null (unless already changed)
             if ($document->getCompany() === $this) {
                 $document->setCompany(null);
             }

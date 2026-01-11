@@ -32,8 +32,8 @@ class DocumentController extends AbstractController
             return $this->json(['message' => 'User has no company assigned'], 400);
         }
 
-        $type   = $request->query->get('type');   // INCOME / COST (opcjonalnie)
-        $status = $request->query->get('status'); // BUFFER / BOOKED (opcjonalnie)
+        $type   = $request->query->get('type');   // INCOME / COST
+        $status = $request->query->get('status'); // BUFFER / BOOKED
 
         $qb = $repo->createQueryBuilder('d')
             ->andWhere('d.company = :company')
@@ -54,7 +54,7 @@ class DocumentController extends AbstractController
         $data = array_map(function (Document $d) {
             return [
                 'id'            => $d->getId(),
-                'invoiceNumber' => $d->getInvoiceNumber(), // ✅ NEW
+                'invoiceNumber' => $d->getInvoiceNumber(),
                 'type'          => $d->getType(),
                 'issueDate'     => $d->getIssueDate()?->format('Y-m-d'),
                 'eventDate'     => $d->getEventDate()?->format('Y-m-d'),
@@ -92,7 +92,6 @@ class DocumentController extends AbstractController
 
         $payload = json_decode($request->getContent(), true) ?? [];
 
-        // ✅ NEW: invoiceNumber jako string (opcjonalne, ale jeśli przychodzi, waliduj)
         $invoiceNumber = null;
         if (array_key_exists('invoiceNumber', $payload)) {
             if ($payload['invoiceNumber'] === null) {
@@ -105,7 +104,6 @@ class DocumentController extends AbstractController
             }
         }
 
-        // Minimalna walidacja
         foreach (['type', 'issueDate', 'eventDate', 'netAmount', 'vatAmount', 'grossAmount'] as $field) {
             if (!array_key_exists($field, $payload)) {
                 return $this->json(['message' => "Missing field: $field"], 400);
@@ -121,8 +119,8 @@ class DocumentController extends AbstractController
 
         $doc = new Document();
         $doc
-            ->setInvoiceNumber($invoiceNumber) // ✅ NEW
-            ->setType((string) $payload['type']) // 'INCOME' albo 'COST'
+            ->setInvoiceNumber($invoiceNumber)
+            ->setType((string) $payload['type'])
             ->setIssueDate($issueDate)
             ->setEventDate($eventDate)
             ->setDescription($payload['description'] ?? null)
@@ -135,17 +133,11 @@ class DocumentController extends AbstractController
             ->setCompany($company)
             ->setCreatedBy($user);
 
-        // Kategoria tylko z tej samej firmy
         if (!empty($payload['categoryId'])) {
             $category = $categoryRepo->find((int) $payload['categoryId']);
-//            if ($category && $category->getCompany()?->getId() === $company->getId()) {
                 $doc->setCategory($category);
-//            } else {
-//                return $this->json(['message' => 'Invalid categoryId (not in your company)'], 400);
-//            }
         }
 
-        // Kontrahent tylko z tej samej firmy
         if (!empty($payload['contractorId'])) {
             $contractor = $contractorRepo->find((int) $payload['contractorId']);
             if ($contractor && $contractor->getCompany()?->getId() === $company->getId()) {
@@ -243,7 +235,6 @@ class DocumentController extends AbstractController
                 'type'          => $d->getType(),
                 'netAmount'     => (float) $d->getNetAmount(),
                 'grossAmount'   => (float) $d->getGrossAmount(),
-                // (opcjonalnie możesz też dodać invoiceNumber do ledger jeśli chcesz)
             ];
         }, $docs);
 

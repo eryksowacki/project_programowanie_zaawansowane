@@ -20,9 +20,6 @@ class UserAdminController extends AbstractController
         private readonly UserPasswordHasherInterface $hasher,
     ) {}
 
-    /**
-     * POST /api/admin/users
-     */
     #[Route('', name: 'admin_users_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
@@ -65,7 +62,6 @@ class UserAdminController extends AbstractController
         $user = new User();
         $user->setEmail($email);
 
-        // Pola opcjonalne: ustawiamy tylko jeśli encja ma settery (tak jak miałeś)
         if (method_exists($user, 'setFirstName')) {
             $user->setFirstName($payload['firstName'] ?? null);
         }
@@ -84,7 +80,6 @@ class UserAdminController extends AbstractController
         $this->em->persist($user);
         $this->em->flush();
 
-        // roles: w laravel miałeś authRoles(); w symfony zwykle jest getRoles()
         $roles = method_exists($user, 'authRoles') ? $user->authRoles() : $user->getRoles();
 
         return $this->json([
@@ -96,9 +91,6 @@ class UserAdminController extends AbstractController
         ], 201);
     }
 
-    /**
-     * PUT /api/admin/users/{id}/full
-     */
     #[Route('/{id}/full', name: 'admin_users_update_full', methods: ['PUT'])]
     public function updateFull(int $id, Request $request): JsonResponse
     {
@@ -146,7 +138,6 @@ class UserAdminController extends AbstractController
             $user->setCompany($company);
         }
 
-        // Laravel: waliduje i dopiero wtedy hashuje
         if (array_key_exists('password', $payload) && $payload['password']) {
             $newPwd = (string)$payload['password'];
 
@@ -169,9 +160,6 @@ class UserAdminController extends AbstractController
         ]);
     }
 
-    /**
-     * PATCH /api/admin/users/{id}
-     */
     #[Route('/{id}', name: 'admin_users_patch', methods: ['PATCH'])]
     public function patch(int $id, Request $request): JsonResponse
     {
@@ -211,9 +199,6 @@ class UserAdminController extends AbstractController
         ]);
     }
 
-    /**
-     * DELETE /api/admin/users/{id}
-     */
     #[Route('/{id}', name: 'admin_users_delete', methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {
@@ -252,14 +237,6 @@ class UserAdminController extends AbstractController
         return $this->em->getRepository(Role::class)->findOneBy(['code' => $code]);
     }
 
-    /**
-     * Wymagania:
-     * - min 8 znaków
-     * - min 1 mała
-     * - min 1 wielka
-     * - min 1 cyfra
-     * - min 1 znak specjalny
-     */
     private function validatePassword(string $password): ?string
     {
         if (mb_strlen($password) < 8) {
@@ -274,7 +251,6 @@ class UserAdminController extends AbstractController
         if (!preg_match('/\d/', $password)) {
             return 'Password must contain at least one digit.';
         }
-        // "special" = wszystko co nie jest literą ani cyfrą (działa też na polskie znaki)
         if (!preg_match('/[^\p{L}\p{N}]/u', $password)) {
             return 'Password must contain at least one special character.';
         }

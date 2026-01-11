@@ -26,8 +26,8 @@ class CompanyAdminController extends AbstractController
         $this->denyAccessUnlessGranted('ROLE_SYSTEM_ADMIN');
 
         $q = trim((string) $request->query->get('q', ''));
-        $activeParam = $request->query->get('active', null); // "true"/"false"/null
-        $sort = (string) $request->query->get('sort', 'name'); // name|id|taxId|active
+        $activeParam = $request->query->get('active', null);
+        $sort = (string) $request->query->get('sort', 'name');
         $dir = strtolower((string) $request->query->get('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
 
         $repo = $this->em->getRepository(Company::class);
@@ -90,7 +90,6 @@ class CompanyAdminController extends AbstractController
 
         $company = new Company();
         $company->setName($name);
-//        $company->setTaxId(isset($payload['taxId']) ? (string)$payload['taxId'] : null);
 
         $taxId = array_key_exists('taxId', $payload) ? $this->normalizeNip($payload['taxId']) : null;
         if (!$this->isValidNip($taxId)) {
@@ -134,9 +133,6 @@ class CompanyAdminController extends AbstractController
             $company->setName($name);
         }
 
-//        if (array_key_exists('taxId', $payload)) {
-//            $company->setTaxId($payload['taxId'] !== null ? (string)$payload['taxId'] : null);
-//        }
         if (array_key_exists('taxId', $payload)) {
             $taxId = $payload['taxId'] !== null ? $this->normalizeNip((string)$payload['taxId']) : null;
 
@@ -234,14 +230,14 @@ class CompanyAdminController extends AbstractController
     private function normalizeNip(?string $nip): ?string
     {
         if ($nip === null) return null;
-        $nip = preg_replace('/\D+/', '', $nip); // usuwa spacje, myślniki itp.
+        $nip = preg_replace('/\D+/', '', $nip);
         $nip = $nip === '' ? null : $nip;
         return $nip;
     }
 
     private function isValidNip(?string $nip): bool
     {
-        if ($nip === null) return true; // null = OK (pole opcjonalne)
+        if ($nip === null) return true;
 
         if (!preg_match('/^\d{10}$/', $nip)) {
             return false;
